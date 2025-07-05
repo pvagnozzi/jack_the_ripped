@@ -1,0 +1,149 @@
+name: 🚀 Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    name: 📝 Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 📝 Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Jack The Ripped ${{ github.ref }}
+        body: |
+          🏋️ **Jack The Ripped** Release ${{ github.ref }}
+          
+          ## 🎯 What's New
+          - Performance improvements
+          - Bug fixes
+          - UI enhancements
+          
+          ## 📱 Downloads
+          - **Android**: APK and AAB files
+          - **iOS**: IPA file (requires developer certificate)
+          - **Web**: Deployed automatically to GitHub Pages
+          - **Desktop**: Windows, macOS, and Linux builds
+          
+          ## 💪 Get Started
+          Download the appropriate version for your platform and start tracking your fitness journey!
+        draft: false
+        prerelease: false
+
+  build-and-release:
+    name: 🏗️ Build and Release All Platforms
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: android
+            build-cmd: |
+              flutter build apk --release
+              flutter build appbundle --release
+            artifact-path: |
+              build/app/outputs/flutter-apk/app-release.apk
+              build/app/outputs/bundle/release/app-release.aab
+            asset-name: jack-the-ripped-android
+
+          - os: macos-latest
+            platform: ios
+            build-cmd: flutter build ios --release --no-codesign
+            artifact-path: build/ios/iphoneos/Runner.app
+            asset-name: jack-the-ripped-ios
+
+          - os: ubuntu-latest
+            platform: web
+            build-cmd: flutter build web --release
+            artifact-path: build/web
+            asset-name: jack-the-ripped-web
+
+          - os: windows-latest
+            platform: windows
+            build-cmd: flutter build windows --release
+            artifact-path: build/windows/x64/runner/Release
+            asset-name: jack-the-ripped-windows
+
+          - os: macos-latest
+            platform: macos
+            build-cmd: flutter build macos --release
+            artifact-path: build/macos/Build/Products/Release
+            asset-name: jack-the-ripped-macos
+
+          - os: ubuntu-latest
+            platform: linux
+            build-cmd: flutter build linux --release
+            artifact-path: build/linux/x64/release/bundle
+            asset-name: jack-the-ripped-linux
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: ☕ Setup Java (for Android)
+      if: matrix.platform == 'android'
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: 🔧 Install Linux dependencies
+      if: matrix.platform == 'linux'
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y ninja-build libgtk-3-dev
+
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+
+    - name: 📦 Get dependencies
+      run: flutter pub get
+
+    - name: 🏗️ Build ${{ matrix.platform }}
+      run: ${{ matrix.build-cmd }}
+
+    - name: 📦 Create Archive
+      run: |
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          cd build/windows/x64/runner/Release
+          7z a ../../../../../${{ matrix.asset-name }}.zip *
+        elif [ "${{ matrix.platform }}" = "android" ]; then
+          mkdir -p release-files
+          cp build/app/outputs/flutter-apk/app-release.apk release-files/
+          cp build/app/outputs/bundle/release/app-release.aab release-files/
+          cd release-files
+          zip -r ../${{ matrix.asset-name }}.zip *
+        else
+          cd ${{ matrix.artifact-path }}
+          zip -r ../../../${{ matrix.asset-name }}.zip .
+        fi
+      shell: bash
+
+    - name: 📤 Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ${{ matrix.asset-name }}.zip
+        asset_name: ${{ matrix.asset-name }}.zip
+        asset_content_type: application/zip

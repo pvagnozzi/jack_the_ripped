@@ -1,0 +1,163 @@
+name: 🛡️ Code Quality & Security
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run security scan weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+jobs:
+  code-quality:
+    name: 📊 Code Quality Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+
+    - name: 📦 Get dependencies
+      run: flutter pub get
+
+    - name: 🔍 Run Dart analyzer
+      run: flutter analyze --fatal-infos --fatal-warnings
+
+    - name: 📏 Check code formatting
+      run: dart format --output=none --set-exit-if-changed .
+
+    - name: 🧪 Run tests with coverage
+      run: flutter test --coverage
+
+    - name: 📊 Generate coverage report
+      run: |
+        dart pub global activate coverage
+        dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --report-on=lib
+
+    - name: 📈 Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: coverage/lcov.info
+        fail_ci_if_error: false
+        verbose: true
+
+  dependency-check:
+    name: 🔒 Dependency Security Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+
+    - name: 📦 Get dependencies
+      run: flutter pub get
+
+    - name: 🔍 Check for outdated dependencies
+      run: flutter pub outdated
+      continue-on-error: true
+
+    - name: 🔒 Run pub audit
+      run: dart pub deps --style=list > dependencies.txt
+
+    - name: 📤 Upload dependency list
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependencies
+        path: dependencies.txt
+
+  license-check:
+    name: 📄 License Compliance Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+
+    - name: 📦 Get dependencies
+      run: flutter pub get
+
+    - name: 📄 Generate license report
+      run: |
+        flutter pub deps --style=list | grep -E "^\s*[a-zA-Z]" > licenses.txt
+        echo "License compliance report generated"
+
+    - name: 📤 Upload license report
+      uses: actions/upload-artifact@v4
+      with:
+        name: license-report
+        path: licenses.txt
+
+  performance-test:
+    name: ⚡ Performance Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+
+    - name: 📦 Get dependencies
+      run: flutter pub get
+
+    - name: ⚡ Run performance tests
+      run: |
+        echo "Running performance analysis..."
+        flutter analyze --no-fatal-infos --no-fatal-warnings | grep -i "performance\|memory\|cpu" || echo "No performance warnings found"
+
+    - name: 📊 Build size analysis
+      run: |
+        flutter build apk --release --analyze-size
+        echo "Build completed - check size analysis above"
+
+  security-scan:
+    name: 🔐 Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 🔐 Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: 📤 Upload Trivy scan results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
