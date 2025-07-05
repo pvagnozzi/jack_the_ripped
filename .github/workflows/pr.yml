@@ -1,0 +1,273 @@
+name: 🔀 Pull Request
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+
+jobs:
+  pr-checks:
+    name: 🔍 PR Quality Checks
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    outputs:
+      tests-passed: ${{ steps.tests.outcome }}
+      analysis-passed: ${{ steps.analysis.outcome }}
+
+    steps:
+    - name: 📥 Checkout PR
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
+
+    - name: ☕ Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: 'stable'
+        cache: true
+
+    - name: 📦 Get dependencies
+      run: flutter pub get
+
+    - name: 📏 Check code formatting
+      run: |
+        if ! dart format --output=none --set-exit-if-changed .; then
+          echo "❌ Code formatting issues found!"
+          echo "Run 'dart format .' to fix formatting issues"
+          exit 1
+        fi
+        echo "✅ Code formatting is correct"
+
+    - name: 🔍 Static analysis
+      id: analysis
+      run: |
+        if ! flutter analyze --fatal-infos --fatal-warnings; then
+          echo "❌ Static analysis failed!"
+          exit 1
+        fi
+        echo "✅ Static analysis passed"
+
+    - name: 🧪 Run tests
+      id: tests
+      run: |
+        if ! flutter test --coverage --reporter=expanded; then
+          echo "❌ Tests failed!"
+          exit 1
+        fi
+        echo "✅ All tests passed"
+
+    - name: 📊 Generate test coverage
+      run: |
+        dart pub global activate coverage
+        dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --report-on=lib
+
+    - name: 📈 Coverage comment
+      uses: romeovs/lcov-reporter-action@v0.3.1
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        lcov-file: coverage/lcov.info
+        delete-old-comments: true
+
+    - name: 🏗️ Test build (Android)
+      run: |
+        echo "🤖 Testing Android build..."
+        if ! flutter build apk --debug; then
+          echo "❌ Android build failed!"
+          exit 1
+        fi
+        echo "✅ Android build successful"
+
+  security-check:
+    name: 🔒 Security Check
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+    - name: 📥 Checkout PR
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - name: 🔐 Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        exit-code: '1'
+        severity: 'CRITICAL,HIGH'
+
+    - name: 📤 Upload security scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  pr-size-check:
+    name: 📏 PR Size Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout PR
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
+
+    - name: 📊 Check PR size
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: files } = await github.rest.pulls.listFiles({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number
+          });
+          
+          const additions = files.reduce((sum, file) => sum + file.additions, 0);
+          const deletions = files.reduce((sum, file) => sum + file.deletions, 0);
+          const changedFiles = files.length;
+          
+          console.log(`📊 PR Stats:`);
+          console.log(`   📁 Files changed: ${changedFiles}`);
+          console.log(`   ➕ Lines added: ${additions}`);
+          console.log(`   ➖ Lines deleted: ${deletions}`);
+          
+          let message = `## 📊 PR Size Analysis\n\n`;
+          message += `- 📁 **Files changed:** ${changedFiles}\n`;
+          message += `- ➕ **Lines added:** ${additions}\n`;
+          message += `- ➖ **Lines deleted:** ${deletions}\n\n`;
+          
+          if (changedFiles > 50 || additions > 1000) {
+            message += `⚠️ **Large PR detected!** Consider breaking this into smaller PRs for easier review.\n\n`;
+          } else if (changedFiles <= 10 && additions <= 200) {
+            message += `✅ **Good PR size!** This should be easy to review.\n\n`;
+          } else {
+            message += `👍 **Reasonable PR size.** Should be manageable to review.\n\n`;
+          }
+          
+          // Add comment to PR
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: message
+          });
+
+  notify-reviewers:
+    name: 📢 Notify Reviewers
+    runs-on: ubuntu-latest
+    needs: [pr-checks, security-check]
+    if: success() && github.event.pull_request.draft == false
+
+    steps:
+    - name: 📢 Notify owner and request review
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const author = pr.user.login;
+          
+          // Get repository owner
+          const owner = context.repo.owner;
+          
+          let message = `## 🎉 PR Ready for Review!\n\n`;
+          message += `Hey @${owner}! 👋\n\n`;
+          message += `**@${author}** has submitted a PR that passed all automated checks:\n\n`;
+          message += `✅ **Code formatting** - Passed\n`;
+          message += `✅ **Static analysis** - Passed\n`;
+          message += `✅ **Tests** - Passed\n`;
+          message += `✅ **Security scan** - Passed\n`;
+          message += `✅ **Build test** - Passed\n\n`;
+          message += `🔍 **This PR is ready for your review!**\n\n`;
+          message += `📋 **PR Details:**\n`;
+          message += `- **Title:** ${pr.title}\n`;
+          message += `- **Branch:** \`${pr.head.ref}\` → \`${pr.base.ref}\`\n`;
+          message += `- **Author:** @${author}\n\n`;
+          
+          if (pr.body) {
+            message += `📝 **Description:**\n${pr.body}\n\n`;
+          }
+          
+          message += `🚀 Once approved, this PR can be safely merged!`;
+          
+          // Add comment to PR
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: message
+          });
+          
+          // Request review from repository owner if not the PR author
+          if (author !== owner) {
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                reviewers: [owner]
+              });
+              console.log(`✅ Review requested from @${owner}`);
+            } catch (error) {
+              console.log(`⚠️ Could not request review: ${error.message}`);
+            }
+          }
+
+  auto-merge:
+    name: 🔄 Auto Merge
+    runs-on: ubuntu-latest
+    needs: [pr-checks, security-check, notify-reviewers]
+    if: success() && github.event.pull_request.draft == false
+
+    steps:
+    - name: 🔄 Enable auto-merge
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          
+          // Enable auto-merge for the PR
+          try {
+            await github.rest.pulls.enableAutoMerge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              merge_method: 'squash'
+            });
+            
+            console.log('✅ Auto-merge enabled for PR');
+            
+            // Add status comment
+            const message = `## 🤖 Auto-merge Enabled\n\n` +
+              `✅ All checks passed! This PR will be **automatically merged** once:\n\n` +
+              `1. ✅ Required reviews are approved\n` +
+              `2. ✅ Branch protection rules are satisfied\n` +
+              `3. ✅ All status checks continue to pass\n\n` +
+              `🔄 **Merge method:** Squash and merge\n\n` +
+              `⏳ Waiting for approval...`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });
+            
+          } catch (error) {
+            console.log(`⚠️ Could not enable auto-merge: ${error.message}`);
+            console.log('This might be due to branch protection settings or permissions');
+          }
