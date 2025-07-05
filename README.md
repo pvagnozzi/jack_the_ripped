@@ -260,7 +260,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-**Your Name** - [@your_username](https://github.com/your_username)
+**Piergiorgio Vagnozzi** - [@pvagnozzi](https://github.com/pvagnozzi)
 
 ---
 
