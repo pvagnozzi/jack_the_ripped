@@ -16,6 +16,9 @@ Jack The Ripped offers a complete solution for:
 - **Flutter** `^3.8.0` - Cross-platform UI framework
 - **Dart** `^3.8.0` - Programming language
 - **Riverpod** `^2.6.1` - Reactive and type-safe state management
+- **Get It** `^7.6.4` - Dependency injection
+- **Freezed** `^2.4.6` - Code generation for immutable classes
+- **Json Annotation** `^4.8.1` - JSON serialization
 
 ### 🏢 App Architecture
 ```
@@ -25,7 +28,8 @@ lib/
 │   ├── constants/              # 📊 Global constants
 │   ├── extensions/             # 🔧 Extension methods
 │   ├── utils/                  # 🛠️ Utility functions
-│   └── theme/                  # 🎨 Theme and styling
+│   ├── theme/                  # 🎨 Theme and styling
+│   └── di/                     # 💉 Dependency injection
 ├── features/                   # 🎮 Feature modules
 │   ├── workout/               # 💪 Workout management
 │   │   ├── data/             # 💾 Data layer (repositories, datasources)
@@ -45,67 +49,75 @@ lib/
 - **🗃️ Repository Pattern** - Data layer abstraction
 - **🔄 Provider Pattern** - State management with Riverpod
 - **🎭 MVVM** - Model-View-ViewModel for presentation layer
+- **💉 Dependency Injection** - Service locator pattern with Get It
 
 ## 🚀 Setup and Installation
 
 ### ✅ Prerequisites
-- **Flutter SDK** `>=3.8.0`
-- **Dart SDK** `>=3.8.0`
-- **Android Studio** / **VS Code** with Flutter plugin
-- **Git**
+- **Flutter SDK** `^3.8.0`
+- **Dart SDK** `^3.8.0`
+- **Android Studio** / **Xcode** (for mobile development)
+- **Visual Studio** (for Windows development)
 
-### 📦 Installation
+### 🔧 Installation Steps
+
+1. **📥 Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/jack_the_ripped.git
+   cd jack_the_ripped
+   ```
+
+2. **📦 Install dependencies**
+   ```bash
+   flutter pub get
+   ```
+
+3. **🏗️ Generate code (if needed)**
+   ```bash
+   flutter packages pub run build_runner build
+   ```
+
+4. **▶️ Run the app**
+   ```bash
+   flutter run
+   ```
+
+## 📱 Supported Platforms
+
+- **🤖 Android** (API 21+)
+- **🍎 iOS** (iOS 12.0+)
+- **🖥️ Windows** (Windows 10+)
+- **🐧 Linux** (Ubuntu 18.04+)
+- **🌐 Web** (Chrome, Firefox, Safari, Edge)
+- **💻 macOS** (macOS 10.14+)
+
+## 🔨 Build Commands
+
+### 🏗️ Development Build
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/jack_the_ripped.git
-cd jack_the_ripped
+# Debug build for testing
+flutter run --debug
 
-# Install dependencies
-flutter pub get
-
-# Verify configuration
-flutter doctor
-
-# Run the app
-flutter run
+# Profile build for performance testing
+flutter run --profile
 ```
 
-### 🏗️ Build for Different Platforms
-
-#### 🤖 Android
+### 📦 Production Build
 ```bash
-# Debug build
-flutter build apk --debug
-
-# Release build
+# Android APK
 flutter build apk --release
 
-# App Bundle (recommended for Google Play)
+# Android App Bundle
 flutter build appbundle --release
-```
 
-#### 🍎 iOS
-```bash
-# Debug build
-flutter build ios --debug
-
-# Release build
+# iOS
 flutter build ios --release
 
-# Archive for App Store
-flutter build ipa --release
-```
-
-#### 🌐 Web
-```bash
-# Build for web
-flutter build web --release
-```
-
-#### 💻 Desktop (Windows/macOS/Linux)
-```bash
 # Windows
 flutter build windows --release
+
+# Web
+flutter build web --release
 
 # macOS
 flutter build macos --release
@@ -116,143 +128,37 @@ flutter build linux --release
 
 ## 🧪 Testing
 
+### 🏃‍♂️ Run Tests
 ```bash
-# Run all tests
+# Unit tests
 flutter test
-
-# Test with coverage
-flutter test --coverage
-
-# Specific widget tests
-flutter test test/widget_test.dart
 
 # Integration tests
 flutter test integration_test/
+
+# Test with coverage
+flutter test --coverage
 ```
 
-## 📦 Main Dependencies
-
-### 🎯 Core Dependencies
-- `flutter_riverpod: ^2.6.1` - 🔄 State management
-- `cupertino_icons: ^1.0.8` - 🍎 iOS style icons
-
-### 💡 Suggested Dependencies for Complete Project
-```yaml
-dependencies:
-  # 🔄 State Management
-  flutter_riverpod: ^2.6.1
-  
-  # 💾 Local Database
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
-  
-  # 🧭 Navigation
-  go_router: ^14.0.0
-  
-  # 🎨 UI/UX
-  flutter_animate: ^4.5.0
-  cached_network_image: ^3.3.1
-  
-  # 📊 Charts for analytics
-  fl_chart: ^0.68.0
-  
-  # 📅 Date/Time
-  intl: ^0.19.0
-  
-  # 🌐 HTTP requests
-  dio: ^5.4.0
-  
-  # 🛠️ Utilities
-  freezed_annotation: ^2.4.1
-  json_annotation: ^4.8.1
-
-dev_dependencies:
-  # ⚙️ Code generation
-  build_runner: ^2.4.8
-  freezed: ^2.4.7
-  json_serializable: ^6.7.1
-  hive_generator: ^2.0.1
-  
-  # 🧪 Testing
-  mockito: ^5.4.4
-  integration_test:
-    sdk: flutter
-```
-
-## 🎨 Design System
-
-### 🌓 Themes
-- **☀️ Light Theme** - Light theme optimized for daytime use
-- **🌙 Dark Theme** - Dark theme for nighttime use
-- **🎨 Colors** - Fitness-oriented color palette
-
-### 🧩 UI Components
-- Custom buttons for workout actions
-- Cards for exercises and meals
-- Charts for progress visualization
-- Forms for workout data input
-
-## 📊 Planned Features
-
-### 🎯 v1.0 - MVP
-- [x] ✅ Basic project setup
-- [ ] 🔐 User registration/login
-- [ ] 📊 Main dashboard
-- [ ] 💪 Basic workout tracking
-- [ ] 💾 Local database with Hive
-
-### 🥗 v1.1 - Nutrition
-- [ ] 📊 Calorie and macro tracking
-- [ ] 🗃️ Food database
-- [ ] 📋 Meal planning
-
-### 📈 v1.2 - Analytics
-- [ ] 📊 Progress charts
-- [ ] 📋 Custom statistics
-- [ ] 📤 Data export
-
-### 🌐 v2.0 - Social & Cloud
-- [ ] ☁️ Cloud sync
-- [ ] 🤝 Workout sharing
-- [ ] 👥 Community features
-
-## 🛠️ Useful Scripts
-
-### ⚙️ Code Generation
+### 📊 Coverage Report
 ```bash
-# Build runner for code generation
-flutter packages pub run build_runner build
-
-# Watch mode for development
-flutter packages pub run build_runner watch --delete-conflicting-outputs
+# Generate coverage report
+genhtml coverage/lcov.info -o coverage/html
 ```
-
-### 🔍 Code Analysis
-```bash
-# Static analysis
-flutter analyze
-
-# Code formatting
-dart format .
-
-# Automatic fixes
-dart fix --apply
-```
-
-## 📝 Code Conventions
-
-- **🌍 Language**: English for comments and domain variable names
-- **📏 Style**: Follow Dart/Flutter guidelines
-- **📝 Commit**: Conventional Commits format
-- **🌿 Branching**: GitFlow pattern
 
 ## 🤝 Contributing
 
-1. 🍴 Fork the project
-2. 🌟 Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. 💾 Commit your changes (`git commit -m 'feat: Add AmazingFeature'`)
-4. 📤 Push to the branch (`git push origin feature/AmazingFeature`)
-5. 🔀 Open a Pull Request
+1. **🍴 Fork the project**
+2. **🌿 Create your feature branch** (`git checkout -b feature/AmazingFeature`)
+3. **✍️ Commit your changes** (`git commit -m 'Add some AmazingFeature'`)
+4. **📤 Push to the branch** (`git push origin feature/AmazingFeature`)
+5. **🔄 Open a Pull Request**
+
+## 🎯 Project Status
+
+[![Build Status](https://github.com/yourusername/jack_the_ripped/workflows/CI/badge.svg)](https://github.com/yourusername/jack_the_ripped/actions)
+[![codecov](https://codecov.io/gh/yourusername/jack_the_ripped/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/jack_the_ripped)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 📄 License
 
@@ -260,8 +166,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-**Piergiorgio Vagnozzi** - [@pvagnozzi](https://github.com/pvagnozzi)
+**Your Name** - [@yourusername](https://github.com/yourusername)
 
----
+## 🙏 Acknowledgments
 
-*💪 Become the best version of yourself with Jack The Ripped! 🏆*
+- Flutter team for the amazing framework
+- Community contributors and testers
+- Bodybuilding and fitness communities for inspiration
