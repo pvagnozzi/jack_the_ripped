@@ -46,6 +46,7 @@ dependencies:
   uuid: ^4.5.1
   get_it: ^8.0.3
   mason: ^0.1.1
+  freezed: ^3.1.0
 
 dev_dependencies:
   flutter_test:
@@ -54,7 +55,6 @@ dev_dependencies:
   # Code Generation
   build_runner: ^2.4.7
   riverpod_generator: ^2.4.0
-  freezed: ^2.4.6
   json_serializable: ^6.7.1
 
   # Testing
